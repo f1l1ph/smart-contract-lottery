@@ -23,6 +23,7 @@ contract RaffleTest is Test {
     function setUp() external {
         DeployRaffle deployer = new DeployRaffle();
         (raffle, helperConfig) = deployer.deployContract();
+        vm.deal(PLAYER, STARTING_PLAYER_BALANCE);
 
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
 
@@ -36,5 +37,30 @@ contract RaffleTest is Test {
 
     function testRaffleInitializesInOpenState() public view {
         assert(raffle.getRaffleState() == Raffle.RaffleState.OPEN);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              ENTER RAFFLE
+    //////////////////////////////////////////////////////////////*/
+
+    function testRaffleRevertsWhenYouDontPayEnough() public {
+        //Arrange
+        vm.prank(PLAYER);
+        //Act / assert
+        vm.expectRevert(Raffle.Raff__SendMoreToEnterRaffle.selector);
+
+        raffle.enterRaffle();
+    }
+
+    function testRaffleRecordsPlayersWhenTheyEnter() public {
+        //arrange
+        vm.prank(PLAYER);
+
+        //act
+        raffle.enterRaffle{value: entranceFee}();
+
+        //assert
+        address playerRecorded = raffle.getPlayer(0);
+        assert(playerRecorded == PLAYER);
     }
 }

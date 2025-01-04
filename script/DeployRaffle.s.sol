@@ -23,6 +23,7 @@ contract DeployRaffle is Script {
             config.subscriptionId,
             config.callbackGasLimit
         );
+        vm.stopBroadcast();
 
         return (raffle, helperConfig);
     }
