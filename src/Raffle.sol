@@ -16,6 +16,11 @@ contract Raffle is VRFConsumerBaseV2Plus {
     error Raff__SendMoreToEndterRaffle();
     error Raffle_TransferFailed();
     error Raffle_NotOpen();
+    error Raffle_UpkeepNotNeeded(
+        uint256 balance,
+        uint256 players,
+        uint256 state
+    );
 
     enum RaffleState {
         OPEN, //0
@@ -96,7 +101,11 @@ contract Raffle is VRFConsumerBaseV2Plus {
     function performUpkeep(bytes calldata) external {
         (bool upkeepNeeded, ) = checkUpkeep("");
         if (!upkeepNeeded) {
-            revert();
+            revert Raffle_UpkeepNotNeeded(
+                address(this).balance,
+                s_players.length,
+                uint256(s_raffleState)
+            );
         }
 
         s_raffleState = RaffleState.CALCULATING;
@@ -112,12 +121,12 @@ contract Raffle is VRFConsumerBaseV2Plus {
                 )
             });
 
-        uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
+        s_vrfCoordinator.requestRandomWords(request);
     }
 
     // CEI: Checks, Effects, Interactions Pattern
     function fulfillRandomWords(
-        uint256 requestId,
+        uint256 /*requestId*/,
         uint256[] calldata randomWords
     ) internal override {
         //Checks
