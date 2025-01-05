@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {DeployRaffle} from "script/DeployRaffle.s.sol";
 import {Raffle} from "src/Raffle.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
+import {console} from "forge-std/console.sol";
 
 contract RaffleTest is Test {
     Raffle public raffle;
@@ -17,13 +18,20 @@ contract RaffleTest is Test {
     uint32 callbackGasLimit;
     uint256 subscriptionId;
 
+    /** Events */
+    event RaffleEntered(address indexed player);
+    event WinnerPicked(address indexed winner);
+
     address public PLAYER = makeAddr("player");
     uint256 public constant STARTING_PLAYER_BALANCE = 10 ether;
 
     function setUp() external {
         DeployRaffle deployer = new DeployRaffle();
         (raffle, helperConfig) = deployer.deployContract();
+
         vm.deal(PLAYER, STARTING_PLAYER_BALANCE);
+
+        console.log("first ones are passing");
 
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
 
@@ -62,5 +70,30 @@ contract RaffleTest is Test {
         //assert
         address playerRecorded = raffle.getPlayer(0);
         assert(playerRecorded == PLAYER);
+    }
+
+    function testEnteringRaffleEmitsEvent() public {
+        //Arrange
+        vm.prank(PLAYER);
+
+        //Act
+        vm.expectEmit(true, false, false, false, address(raffle));
+        emit RaffleEntered(PLAYER);
+        //Assert
+        raffle.enterRaffle{value: entranceFee}();
+    }
+
+    function testDontAllowPlayersToEnterWhileRaffleCalculating() public {
+        //Arrange
+        vm.prank(PLAYER);
+
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1); //warps time
+        vm.roll(block.number + 1); // changes block number
+        raffle.performUpkeep("");
+
+        //Act / Assert
+        vm.expectRevert(Raffle.Raffle_NotOpen.selector);
+        raffle.enterRaffle{value: entranceFee}();
     }
 }
